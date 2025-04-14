@@ -5,6 +5,7 @@ class HarrisCorner:
     def __init__(self, image):
         self.image = image
         self.corners = None
+        
 
     def _sobel_gradients(self):
         sobelx = cv2.Sobel(self.image, cv2.CV_64F, 1, 0, ksize=5)
@@ -26,11 +27,9 @@ class HarrisCorner:
         R = det_M - k * (trace_M**2)
 
         self.corners = R
-        return R
 
     #Thresholding and non-maximum suppression
-    def threshold_and_nms(self, threshold_ratio=0.001):
-    
+    def threshold_and_nms(self, threshold_ratio=0.001):    
         R = self.corners
         threshold = threshold_ratio * R.max()
         corner_map = np.zeros_like(R)
@@ -40,13 +39,23 @@ class HarrisCorner:
         dilated = cv2.dilate(R, None)
         nms_corners = np.zeros_like(R)
         nms_corners[(R == dilated) & (R > threshold)] = 255
-
-        self.corners = nms_corners.astype(np.uint8)
+        nms_corners = nms_corners.astype(np.uint8)
+        return nms_corners
         
-    def draw_corners_on_image(self, radius=7, color=(0, 0, 255)):
+    def draw_corners_on_image(self, nms_corners, radius=5, color=(0, 0, 255)):
         result_img = self.image.copy()
-        coords = np.argwhere(self.corners)
+        coords = np.argwhere(nms_corners)
         for y, x in coords:
             cv2.circle(result_img, (x, y), radius, color, thickness=-1)
 
         return result_img #to be shown in the output widget
+    
+    def change_threshold(self, threshold):
+        nms_corners= self.threshold_and_nms(threshold)
+        self.draw_corners_on_image(nms_corners)
+
+    def apply_harris(self):
+       self.compute_harris_response()
+       nms_corners= self.threshold_and_nms()
+       result_img= self.draw_corners_on_image(nms_corners)
+       return result_img
