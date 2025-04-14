@@ -6,18 +6,18 @@ class HarrisCorner:
         self.image = image
         self.corners = None
         
-
+    #get Ix, Iy, IxIy
     def _sobel_gradients(self):
         sobelx = cv2.Sobel(self.image, cv2.CV_64F, 1, 0, ksize=5)
         sobely = cv2.Sobel(self.image, cv2.CV_64F, 0, 1, ksize=5)
         return sobelx**2, sobely**2, sobelx * sobely
-
+    #get Gx, Gy, GxGy
     def _apply_gaussian_window(self, Ix_squared, Iy_squared, IxIy):
         Gx = cv2.GaussianBlur(Ix_squared, (5, 5), 0)
         Gy = cv2.GaussianBlur(Iy_squared, (5, 5), 0)
         GxGy = cv2.GaussianBlur(IxIy, (5, 5), 0)
         return Gx, Gy, GxGy
-
+    #harris matrix and response function 
     def compute_harris_response(self, k=0.04):
         Ix2, Iy2, Ixy = self._sobel_gradients()
         Gx, Gy, Gxy = self._apply_gaussian_window(Ix2, Iy2, Ixy)
@@ -50,10 +50,12 @@ class HarrisCorner:
 
         return result_img #to be shown in the output widget
     
+    #upon slider change of threshold
     def change_threshold(self, threshold):
         nms_corners= self.threshold_and_nms(threshold)
         self.draw_corners_on_image(nms_corners)
 
+    #once image uploaded, apply this function to get harris output
     def apply_harris(self):
        self.compute_harris_response()
        nms_corners= self.threshold_and_nms()
