@@ -50,10 +50,10 @@ class SIFT:
             for sigma in sigmas[1:]:    
                     image = cv.GaussianBlur(base_image, (0, 0), sigmaX=sigma, sigmaY=sigma)
                     gaussian_images_per_octave.append(image)
-                    base_image=image
+
 
             gaussian_images.append(gaussian_images_per_octave)
-            base_image=gaussian_images[-3]
+            base_image = gaussian_images_per_octave[3]
             # Step 5: Downsample the image for the next octave
             base_image = cv.resize(base_image, (base_image.shape[1] // 2, base_image.shape[0] // 2), interpolation=cv.INTER_NEAREST)
 

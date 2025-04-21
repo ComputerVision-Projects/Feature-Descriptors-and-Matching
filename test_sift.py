@@ -1,10 +1,10 @@
 import cv2 as cv 
-import SIFT 
+from SIFT import SIFT 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     # Load an example image
-    img = cv.imread(cv.samples.findFile("graf1.png"))  # Replace with any image path
+    img = cv.imread(cv.samples.findFile(r"C:\Users\joody\Third Year\Equipments\Feature-Descriptors-and-Matching\Images\Michael-Moore2.jpg"))  # Replace with any image path
     if img is None:
         raise FileNotFoundError("Image not found. Provide a valid image path.")
 
