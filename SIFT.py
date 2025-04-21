@@ -62,9 +62,11 @@ class SIFT:
 
     def find_scale_space_extrema(self, contrast_threshold=0.03):
         keypoints = []
-        dog_pyramid= self.generate_dog_images()
+        dog_pyramid = self.generate_dog_images()
         for octave_idx, octave in enumerate(dog_pyramid):
-            for scale_idx in range(1, len(octave) - 1):  # avoid first and last for 3x3x3
+            octave_scale_factor = 2 ** octave_idx  # Scale factor for this octave
+            
+            for scale_idx in range(1, len(octave) - 1):
                 prev_img = octave[scale_idx - 1]
                 curr_img = octave[scale_idx]
                 next_img = octave[scale_idx + 1]
@@ -75,35 +77,34 @@ class SIFT:
                     for x in range(1, width - 1):
                         value = curr_img[y, x]
                         if abs(value) < contrast_threshold:
-                            continue  # low contrast → reject early
+                            continue
 
-                        patch_prev = prev_img[y - 1:y + 2, x - 1:x + 2]
-                        patch_curr = curr_img[y - 1:y + 2, x - 1:x + 2]
-                        patch_next = next_img[y - 1:y + 2, x - 1:x + 2]
+                        patch_prev = prev_img[y-1:y+2, x-1:x+2]
+                        patch_curr = curr_img[y-1:y+2, x-1:x+2]
+                        patch_next = next_img[y-1:y+2, x-1:x+2]
 
-                        # 3x3x3 cube flattened
                         cube = np.stack([patch_prev, patch_curr, patch_next]).flatten()
-                        center_index = 13  # center of 3x3x3 = 27 values
+                        center_index = 13
                         center_value = cube[center_index]
-
-                        # Remove center pixel for comparison
                         neighbors = np.delete(cube, center_index)
 
                         if center_value > np.max(neighbors) or center_value < np.min(neighbors):
-                        # Refine the keypoint location
                             refined = self.refine_keypoint(dog_pyramid, octave_idx, scale_idx, x, y)
-                        if refined[0] is None:
-                            continue
-                        refined_x, refined_y, refined_scale = refined
+                            if refined[0] is None:
+                                continue
+                                
+                            refined_x, refined_y, refined_scale = refined
+                            
+                            # Convert coordinates back to original image space
+                            original_x = (refined_x * octave_scale_factor) / 2  # Divide by 2 because of initial upscaling
+                            original_y = (refined_y * octave_scale_factor) / 2
+                            
+                            if self.is_edge_like(curr_img, int(round(refined_x)), int(round(refined_y))):
+                                continue
 
-                        # Check if it's edge-like
-                        if self.is_edge_like(curr_img, int(round(refined_x)), int(round(refined_y))):
-                            continue  # discard edge-like keypoints
-
-                        # Save the refined keypoint
-                        keypoints.append((octave_idx, refined_scale, refined_x, refined_y))
+                            keypoints.append((original_x, original_y, refined_scale, octave_idx))
+        
         return keypoints
-
     def refine_keypoint(self, dog_pyramid, octave, scale, x, y):
         if (x < 1 or x >= dog_pyramid[octave][scale].shape[1] - 1 or
             y < 1 or y >= dog_pyramid[octave][scale].shape[0] - 1 or
@@ -151,7 +152,7 @@ class SIFT:
         refined_y = y + offset[1]
         refined_scale = scale + offset[2]
 
-        return refined_x, refined_y, refined_scale
+        return refined_x, refined_y, refined_scale 
 
     def is_edge_like(self, curr_img, x, y, edge_threshold=10):
         dxx = curr_img[y, x + 1] - 2 * curr_img[y, x] + curr_img[y, x - 1]
