@@ -1,21 +1,17 @@
-import numpy as np
 import cv2 as cv
+import numpy as np
 import math
 from scipy import ndimage
 
 class SIFT:
-    #convert image to grayscale 
     def __init__(self, image):
+        self.original_image = image
         self.image = cv.cvtColor(image, cv.COLOR_BGR2GRAY).astype(np.float32)
-    #this return the base blurred image
+
     def generate_base_image(self, image, sigma=1.6, assum_blur=0.5):
         image = cv.resize(image, (0, 0), fx=2, fy=2)
         sigma_diff = max(math.sqrt((sigma**2) - 2*(assum_blur**2)), 0.01)
         return cv.GaussianBlur(image, (0, 0), sigmaX=sigma_diff, sigmaY=sigma_diff)
-
-    def compute_number_of_octaves(self, image_shape):
-        """Compute number of octaves in image pyramid as function of base image shape (OpenCV default)"""
-        return int(round(math.log(min(image_shape)) / math.log(2) - 1))
 
     def get_sigmas_per_octave(self, sigma, num_intervals):
         num_images_per_octave = num_intervals + 3
@@ -34,7 +30,7 @@ class SIFT:
         sigmas = self.get_sigmas_per_octave(sigma, num_intervals)
         gaussian_images = []
 
-        for octave_index in range(num_octaves):
+        for _ in range(num_octaves):
             gaussian_images_per_octave = [base_image]
             for sigma in sigmas[1:]:
                 image = cv.GaussianBlur(base_image, (0, 0), sigmaX=sigma, sigmaY=sigma)
@@ -47,8 +43,8 @@ class SIFT:
         return gaussian_images
 
     def generate_dog_images(self):
-        base_image= self.generate_base_image(self.image)
-        gaussian_pyramid= self.generate_gaussian_images(base_image)
+        base_image = self.generate_base_image(self.image)
+        gaussian_pyramid = self.generate_gaussian_images(base_image)
         dog_pyramid = []
 
         for octave in gaussian_pyramid:
@@ -64,8 +60,6 @@ class SIFT:
         keypoints = []
         dog_pyramid = self.generate_dog_images()
         for octave_idx, octave in enumerate(dog_pyramid):
-            octave_scale_factor = 2 ** octave_idx  # Scale factor for this octave
-            
             for scale_idx in range(1, len(octave) - 1):
                 prev_img = octave[scale_idx - 1]
                 curr_img = octave[scale_idx]
@@ -79,32 +73,24 @@ class SIFT:
                         if abs(value) < contrast_threshold:
                             continue
 
-                        patch_prev = prev_img[y-1:y+2, x-1:x+2]
-                        patch_curr = curr_img[y-1:y+2, x-1:x+2]
-                        patch_next = next_img[y-1:y+2, x-1:x+2]
+                        patch_prev = prev_img[y - 1:y + 2, x - 1:x + 2]
+                        patch_curr = curr_img[y - 1:y + 2, x - 1:x + 2]
+                        patch_next = next_img[y - 1:y + 2, x - 1:x + 2]
 
                         cube = np.stack([patch_prev, patch_curr, patch_next]).flatten()
-                        center_index = 13
-                        center_value = cube[center_index]
-                        neighbors = np.delete(cube, center_index)
+                        center_value = cube[13]
+                        neighbors = np.delete(cube, 13)
 
                         if center_value > np.max(neighbors) or center_value < np.min(neighbors):
                             refined = self.refine_keypoint(dog_pyramid, octave_idx, scale_idx, x, y)
-                            if refined[0] is None:
+                            if refined is None or refined[0] is None:
                                 continue
-                                
                             refined_x, refined_y, refined_scale = refined
-                            
-                            # Convert coordinates back to original image space
-                            original_x = (refined_x * octave_scale_factor) / 2  # Divide by 2 because of initial upscaling
-                            original_y = (refined_y * octave_scale_factor) / 2
-                            
                             if self.is_edge_like(curr_img, int(round(refined_x)), int(round(refined_y))):
                                 continue
-
-                            keypoints.append((original_x, original_y, refined_scale, octave_idx))
-        
+                            keypoints.append((octave_idx, refined_scale, refined_x, refined_y))
         return keypoints
+
     def refine_keypoint(self, dog_pyramid, octave, scale, x, y):
         if (x < 1 or x >= dog_pyramid[octave][scale].shape[1] - 1 or
             y < 1 or y >= dog_pyramid[octave][scale].shape[0] - 1 or
@@ -151,10 +137,11 @@ class SIFT:
         refined_x = x + offset[0]
         refined_y = y + offset[1]
         refined_scale = scale + offset[2]
-
-        return refined_x, refined_y, refined_scale 
+        return refined_x, refined_y, refined_scale
 
     def is_edge_like(self, curr_img, x, y, edge_threshold=10):
+        if x < 1 or x >= curr_img.shape[1] - 1 or y < 1 or y >= curr_img.shape[0] - 1:
+            return True
         dxx = curr_img[y, x + 1] - 2 * curr_img[y, x] + curr_img[y, x - 1]
         dyy = curr_img[y + 1, x] - 2 * curr_img[y, x] + curr_img[y - 1, x]
         dxy = ((curr_img[y + 1, x + 1] - curr_img[y + 1, x - 1]) -
@@ -162,18 +149,15 @@ class SIFT:
 
         trace = dxx + dyy
         det = dxx * dyy - dxy ** 2
-
         if det <= 0:
             return True
-
         ratio = (trace ** 2) / det
         return ratio >= ((edge_threshold + 1) ** 2) / edge_threshold
 
-    def assign_orientation(self, radius=8, num_bins=36):
-        image=self.image
-        keypoints= self.find_scale_space_extrema()
+    def assign_orientation(self, keypoints, radius=8, num_bins=36):
+        image = self.image
         oriented_keypoints = []
-        for x, y in keypoints:
+        for octave_idx, scale, x, y in keypoints:
             x, y = int(x), int(y)
             if y < radius or y >= image.shape[0] - radius or x < radius or x >= image.shape[1] - radius:
                 continue
@@ -185,16 +169,13 @@ class SIFT:
 
             hist, _ = np.histogram(orientation, bins=num_bins, range=(0, 360), weights=magnitude)
             dominant_orientation = np.argmax(hist) * (360 // num_bins)
-
             oriented_keypoints.append((x, y, dominant_orientation))
         return oriented_keypoints
 
-
-    def compute_descriptors(self, window_size=16, num_subregions=4, num_bins=8):
-        image=self.image
-        oriented_keypoints= self.assign_orientation()
+    def compute_descriptors(self, keypoints, window_size=16, num_subregions=4, num_bins=8):
+        image = self.image
         descriptors = []
-        for x, y, orientation in oriented_keypoints:
+        for x, y, orientation in keypoints:
             x, y = int(x), int(y)
             half_size = window_size // 2
             if y < half_size or y >= image.shape[0] - half_size or x < half_size or x >= image.shape[1] - half_size:
@@ -214,10 +195,11 @@ class SIFT:
                     sub_ang = angle[i * step:(i + 1) * step, j * step:(j + 1) * step]
                     hist, _ = np.histogram(sub_ang, bins=num_bins, range=(0, 360), weights=sub_mag)
                     descriptor.extend(hist)
+
             descriptor = np.array(descriptor)
             descriptor /= np.linalg.norm(descriptor) + 1e-7
+            descriptor = np.clip(descriptor, 0, 0.2)
+            descriptor /= np.linalg.norm(descriptor) + 1e-7
             descriptors.append(descriptor)
+
         return descriptors
-
-
-
