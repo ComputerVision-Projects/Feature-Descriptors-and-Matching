@@ -154,6 +154,8 @@ class ImageViewer(QWidget):
         return cv2.countNonZero(b - g) == 0 and cv2.countNonZero(b - r) == 0
     
     def get_loaded_image(self):
+        print("Returning loaded image:", type(self.img_data), self.img_data.shape if self.img_data is not None else "None")
+
         return self.img_data
 
 

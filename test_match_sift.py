@@ -33,7 +33,7 @@ def draw_matches(img1, kp1, img2, kp2, matches, max_matches=50):
 
 
 
-def get_good_matches(descriptors1, descriptors2, ratio_thresh=0.75):
+def get_good_matches(descriptors1, descriptors2, ratio_thresh=0.5):
     descriptors2 = np.array(descriptors2)
     good_matches = []
     for i, d1 in enumerate(descriptors1):
@@ -47,7 +47,7 @@ def get_good_matches(descriptors1, descriptors2, ratio_thresh=0.75):
 if __name__ == "__main__":
     
     image1_path = "C:/Computer_Vision/task2_canny&activecountour/Edge-and-boundary-detection-Hough-transform-and-SNAKE-/Images/cat.jpg"
-    image2_path = "C:/Computer_Vision/task2_canny&activecountour/Edge-and-boundary-detection-Hough-transform-and-SNAKE-/Images/cat_part_mod2.jpg"
+    image2_path = "C:/Computer_Vision/task2_canny&activecountour/Edge-and-boundary-detection-Hough-transform-and-SNAKE-/Images/cat_part.jpg"
 
     image1 = cv2.imread(image1_path)
     image2 = cv2.imread(image2_path)
