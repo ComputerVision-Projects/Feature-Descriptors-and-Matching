@@ -97,8 +97,15 @@ class MainWindow(QMainWindow):
 
         window_size = self.window_slider.value()|1
         threshold = self.threshold_slider.value() / 1000.0
+        # Time the detection
+        start_time = time.time()
+    
+
         detector = CornerDetector(image, color_image, window_size=window_size, threshold=threshold)
         result_img = detector.apply_corner_detection(method="harris")
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Corner detection completed in {elapsed_time:.4f} seconds.")
 
         self.corners_viewer.display_output_image(result_img)
 

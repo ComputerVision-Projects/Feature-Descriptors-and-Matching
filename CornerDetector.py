@@ -44,7 +44,10 @@ class CornerDetector:
         # Non-maximum suppression using dilation
         dilated = cv2.dilate(R, None)   #find local maxima in R by comparing each value by it neighbors
         nms_corners = np.zeros_like(R)
-        nms_corners[(R == dilated) & (R > threshold)] = 255
+        nms_corners[(R == dilated) & (R > threshold)] = 255 ## 3. Keep only those pixels that are:
+                                                    #    - Equal to the dilated value (i.e. local maxima)
+                                                    #    - AND above a threshold
+
         nms_corners = nms_corners.astype(np.uint8)
         return nms_corners
         
@@ -68,8 +71,7 @@ class CornerDetector:
         lambda1 = 0.5 * (trace + sqrt_term)
         lambda2 = 0.5 * (trace - sqrt_term)
 
-        self.corners = np.minimum(lambda1, lambda2)
-
+        self.corners = np.minimum(lambda1, lambda2) 
     def apply_corner_detection(self, method="harris"):
         if method == "harris":
             self.compute_harris_response()
