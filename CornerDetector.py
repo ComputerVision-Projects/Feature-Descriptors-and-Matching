@@ -15,8 +15,6 @@ class CornerDetector:
         sobelx = cv2.Sobel(self.image, cv2.CV_64F, 1, 0, ksize=5)
         sobely = cv2.Sobel(self.image, cv2.CV_64F, 0, 1, ksize=5)
         return sobelx**2, sobely**2, sobelx * sobely
-    
-
 
     #get Gx, Gy, GxGy
     def _apply_gaussian_window(self, Ix_squared, Iy_squared, IxIy):
@@ -24,6 +22,7 @@ class CornerDetector:
         Gy = cv2.GaussianBlur(Iy_squared, (self.window_size, self.window_size), 0)
         GxGy = cv2.GaussianBlur(IxIy, (self.window_size, self.window_size), 0)
         return Gx, Gy, GxGy
+    
     #harris matrix and response function 
     def compute_harris_response(self, k=0.04):
         Ix2, Iy2, Ixy = self._sobel_gradients()
