@@ -244,7 +244,7 @@ class MainWindow(QMainWindow):
      return matched_image 
 
 
-    def get_good_matches(self,descriptors1, descriptors2, ratio_thresh=0.6):
+    def get_good_matches(self,descriptors1, descriptors2, ratio_thresh=0.5):
      descriptors2 = np.array(descriptors2)
      good_matches = []
      for i, d1 in enumerate(descriptors1):
