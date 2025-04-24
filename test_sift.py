@@ -67,7 +67,7 @@ class SIFTVisualizer:
         self.visualize_keypoints()
 
 if __name__ == "__main__":
-    image_path = r"C:\Users\joody\Third Year\Equipments\Feature-Descriptors-and-Matching\Images\green.jpg"
+    image_path = r"C:\Users\joody\Downloads\cat-apple-8883021.jpg"
     try:
         visualizer = SIFTVisualizer(image_path)
         visualizer.run_visualizations()
